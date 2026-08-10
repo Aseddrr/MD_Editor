@@ -24,6 +24,7 @@ import {
 } from "./storage";
 import { filterTree, renderFileTree } from "./tree";
 import type { DocumentPayload, OutlineItem, Theme, ViewMode } from "./types";
+import { resetDocumentViewport } from "./viewport";
 
 const AUTOSAVE_DELAY_MS = 800;
 const PREVIEW_DELAY_MS = 90;
@@ -250,7 +251,7 @@ async function newDocument(): Promise<void> {
   searchMatches = [];
   searchIndex = -1;
   renderDocument();
-  editor.focus();
+  resetAndFocusDocumentViewport();
 }
 
 async function chooseAndOpenFile(): Promise<void> {
@@ -298,7 +299,7 @@ async function openDocument(path: string): Promise<void> {
     fileFilter.value = "";
     renderDocument();
     renderRecentFiles();
-    editor.focus();
+    resetAndFocusDocumentViewport();
   } catch (error) {
     setSaveStatus("error");
     showToast(errorMessage(error), "error", 5000);
@@ -467,6 +468,14 @@ function renderDocument(): void {
   updateDocumentChrome();
   updateCursorStatus();
   updateSearch(false, 1);
+}
+
+function resetAndFocusDocumentViewport(): void {
+  resetDocumentViewport(editor, [preview, outlineContainer], (callback) => {
+    window.requestAnimationFrame(callback);
+  });
+  editor.focus({ preventScroll: true });
+  updateCursorStatus();
 }
 
 function renderPreviewAndOutline(): void {
