@@ -2,7 +2,7 @@
 
 LightMark 是一个面向 Windows 的轻量 Markdown 浏览与编辑器。桌面外壳使用 Tauri 2，界面使用原生 TypeScript、HTML 和 CSS，不依赖 React、Vue、Monaco 或 CodeMirror。
 
-当前版本：`0.1.2`。
+当前版本：`0.1.3`。
 
 ## 功能
 
@@ -10,7 +10,7 @@ LightMark 是一个面向 Windows 的轻量 Markdown 浏览与编辑器。桌面
 - 打开文件夹并显示 Markdown 文件树，支持按文件名筛选。
 - 左侧大纲位于目录上方，两部分可拖动调整高度并自动记住比例。
 - Markdown 实时预览，渲染结果经过 DOMPurify 清理。
-- 自动提取 ATX 与 Setext 标题，并从大纲跳转到编辑器和预览。
+- 自动提取 ATX 与 Setext 标题；大纲支持按层级折叠、记住各文件状态并跳转到编辑器和预览。
 - 当前文档搜索以及上一个、下一个匹配。
 - 粗体、斜体、行内代码、链接、标题和列表格式操作。
 - 拖入 Markdown 文件直接打开。

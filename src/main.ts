@@ -11,6 +11,8 @@ import {
   type SearchMatch,
 } from "./editor";
 import { parseOutline, renderMarkdown } from "./markdown";
+import { loadCollapsedOutlineIds, saveCollapsedOutlineIds } from "./outline-storage";
+import { buildVisibleOutlineRows } from "./outline-tree";
 import { createEmptyDocument, createInitialState, documentDisplayName, isDocumentDirty } from "./state";
 import { calculateSidebarSplit, DEFAULT_SIDEBAR_OUTLINE_RATIO } from "./sidebar";
 import {
@@ -59,6 +61,7 @@ let searchMatches: SearchMatch[] = [];
 let searchIndex = -1;
 let lastNativeWindowTitle = "";
 let sidebarDragOffset = 0;
+let collapsedOutlineIds = new Set<string>();
 
 void initialize().catch((error: unknown) => {
   showToast(errorMessage(error), "error", 5000);
@@ -241,6 +244,7 @@ async function newDocument(): Promise<void> {
   documentSession += 1;
   hasDocumentSession = true;
   state.document = createEmptyDocument();
+  collapsedOutlineIds = new Set();
   state.document.saveStatus = "idle";
   editor.value = "";
   searchMatches = [];
@@ -287,6 +291,7 @@ async function openDocument(path: string): Promise<void> {
       lineEnding: payload.lineEnding,
       saveStatus: "saved",
     };
+    collapsedOutlineIds = loadCollapsedOutlineIds(payload.path);
     state.recentFiles = rememberRecentFile(state.recentFiles, payload.path);
     saveRecentFiles(state.recentFiles);
     editor.value = payload.content;
@@ -373,6 +378,7 @@ async function persistDocument(path: string, updatePath: boolean): Promise<boole
 
     if (updatePath || !state.document.path) {
       state.document.path = savedPath;
+      saveCollapsedOutlineIds(savedPath, collapsedOutlineIds);
     }
     state.document.persistedContent = contentToSave;
     state.recentFiles = rememberRecentFile(state.recentFiles, savedPath);
@@ -482,17 +488,56 @@ function renderOutline(): void {
   }
 
   const fragment = document.createDocumentFragment();
-  state.outline.forEach((item) => {
+  buildVisibleOutlineRows(state.outline, collapsedOutlineIds).forEach((row) => {
+    const item = row.item;
+    const rowElement = document.createElement("div");
+    rowElement.className = "outline-row";
+    rowElement.style.setProperty("--outline-depth", String(Math.max(0, item.level - 1)));
+
+    if (row.hasChildren) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "outline-toggle";
+      toggle.textContent = row.isCollapsed ? "▸" : "▾";
+      toggle.title = `${row.isCollapsed ? "展开" : "收起"}“${item.text}”`;
+      toggle.setAttribute("aria-label", toggle.title);
+      toggle.setAttribute("aria-expanded", String(!row.isCollapsed));
+      toggle.addEventListener("click", () => toggleOutline(item));
+      toggle.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        toggleOutline(item);
+      });
+      rowElement.append(toggle);
+    } else {
+      const spacer = document.createElement("span");
+      spacer.className = "outline-toggle-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      rowElement.append(spacer);
+    }
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "outline-item";
     button.textContent = item.text;
     button.title = item.text;
-    button.style.setProperty("--outline-depth", String(Math.max(0, item.level - 1)));
     button.addEventListener("click", () => jumpToOutline(item));
-    fragment.append(button);
+    rowElement.append(button);
+    fragment.append(rowElement);
   });
   outlineContainer.append(fragment);
+}
+
+function toggleOutline(item: OutlineItem): void {
+  if (collapsedOutlineIds.has(item.id)) {
+    collapsedOutlineIds.delete(item.id);
+  } else {
+    collapsedOutlineIds.add(item.id);
+  }
+  if (state.document.path) {
+    saveCollapsedOutlineIds(state.document.path, collapsedOutlineIds);
+  }
+  renderOutline();
 }
 
 function jumpToOutline(item: OutlineItem): void {

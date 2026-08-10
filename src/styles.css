@@ -342,13 +342,49 @@ textarea:focus-visible {
 }
 
 .outline-item {
-  padding-left: calc(7px + var(--outline-depth) * 11px);
+  min-width: 0;
+  padding: 4px 4px;
   color: var(--text-muted);
   font-size: 12px;
 }
 
 .outline-item:hover {
   color: var(--text);
+}
+
+.outline-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: 27px;
+  padding-left: calc(var(--outline-depth) * 11px);
+}
+
+.outline-toggle,
+.outline-toggle-spacer {
+  width: 20px;
+  min-width: 20px;
+  height: 27px;
+  min-height: 27px;
+}
+
+.outline-toggle {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  border: 0;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.outline-toggle:hover {
+  color: var(--text);
+}
+
+.outline-toggle-spacer {
+  display: block;
 }
 
 .empty-message {

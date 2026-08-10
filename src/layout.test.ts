@@ -66,6 +66,17 @@ describe("layout containment contract", () => {
     expectDeclarations(".markdown-body", ["max-height: 100%;", "overflow: auto;"]);
   });
 
+  it("keeps hierarchical outline rows compact", () => {
+    expectDeclarations(".outline-row", [
+      "grid-template-columns: 20px minmax(0, 1fr);",
+      "min-height: 27px;",
+    ]);
+    expectDeclarations(".outline-toggle,\n.outline-toggle-spacer", [
+      "width: 20px;",
+      "min-height: 27px;",
+    ]);
+  });
+
   it("contains intrinsically wide Markdown content", () => {
     expectDeclarations(".markdown-body pre", ["max-width: 100%;", "overflow: auto;"]);
     expectDeclarations(".markdown-body .table-scroll", [
