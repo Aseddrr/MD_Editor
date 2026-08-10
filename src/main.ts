@@ -1,5 +1,6 @@
 import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import {
@@ -53,11 +54,13 @@ let previewTimer: number | null = null;
 let toastTimer: number | null = null;
 let searchMatches: SearchMatch[] = [];
 let searchIndex = -1;
-let allowWindowClose = false;
+let lastNativeWindowTitle = "";
 
-initialize();
+void initialize().catch((error: unknown) => {
+  showToast(errorMessage(error), "error", 5000);
+});
 
-function initialize(): void {
+async function initialize(): Promise<void> {
   applyTheme(state.theme);
   applyViewMode(state.viewMode);
   editor.value = state.document.content;
@@ -67,7 +70,8 @@ function initialize(): void {
   updateDocumentChrome();
   updateCursorStatus();
   bindActions();
-  void bindWindowEvents();
+  await bindWindowEvents();
+  await openStartupDocument();
 }
 function bindActions(): void {
   document.querySelectorAll<HTMLElement>("[data-action]").forEach((button) => {
@@ -122,6 +126,10 @@ function bindActions(): void {
 
 async function bindWindowEvents(): Promise<void> {
   const appWindow = getCurrentWebviewWindow();
+  await listen<string>("open-markdown-path", (event) => {
+    void openDocument(event.payload);
+  });
+
   await appWindow.onDragDropEvent((event) => {
     if (event.payload.type !== "drop") return;
     const markdownPath = event.payload.paths.find(isMarkdownPath);
@@ -133,13 +141,19 @@ async function bindWindowEvents(): Promise<void> {
   });
 
   await appWindow.onCloseRequested(async (event) => {
-    if (allowWindowClose) return;
+    if (!hasDocumentSession || !isDocumentDirty(state.document)) return;
     event.preventDefault();
     if (await prepareToLeaveDocument()) {
-      allowWindowClose = true;
-      await appWindow.close();
+      await appWindow.destroy();
     }
   });
+}
+
+async function openStartupDocument(): Promise<void> {
+  const path = await invoke<string | null>("startup_markdown_path");
+  if (path) {
+    await openDocument(path);
+  }
 }
 
 async function newDocument(): Promise<void> {
@@ -580,7 +594,12 @@ function setSaveStatus(status: typeof state.document.saveStatus): void {
 function updateDocumentChrome(): void {
   const name = documentDisplayName(state.document.path);
   const dirtyMark = isDocumentDirty(state.document) ? " •" : "";
-  document.title = `${name}${dirtyMark} — LightMark`;
+  const windowTitle = `${name}${dirtyMark} — LightMark`;
+  document.title = windowTitle;
+  if (windowTitle !== lastNativeWindowTitle) {
+    lastNativeWindowTitle = windowTitle;
+    void getCurrentWebviewWindow().setTitle(windowTitle);
+  }
   documentPath.textContent = state.document.path ?? name;
   documentPath.title = state.document.path ?? name;
 

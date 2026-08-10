@@ -13,7 +13,7 @@
 - Rust 端从启动参数中挑选第一个真实存在的 `.md` / `.markdown` 文件并返回规范化路径；前端完成窗口事件注册后读取并打开该路径。
 - 加入 Tauri single-instance 插件且优先注册。第二个实例启动时验证参数中的 Markdown 路径，把路径发送给主窗口，并恢复、显示和聚焦主窗口。
 - 在 `bundle.fileAssociations` 中声明 `.md` 与 `.markdown`，让 NSIS 安装后把 LightMark 注册为可选编辑器。
-- 增加 `NSIS_HOOK_PREUNINSTALL`：卸载前检测 `lightmark.exe`。如果应用仍在运行，提示用户先关闭并中止本次卸载，禁止先移除卸载器和注册信息后留下被锁定的主程序。
+- 增加 `NSIS_HOOK_PREUNINSTALL`：卸载前检测安装目录中的 `lightmark.exe` 是否被占用。如果文件仍被锁定，提示用户先关闭应用并中止本次卸载，禁止先移除卸载器和注册信息后留下主程序。
 - 版本从 `0.1.0` 升级到 `0.1.1`。
 
 ## 安装替换

@@ -106,6 +106,28 @@ pub fn scan_markdown_tree(root_path: String) -> Result<Vec<FileTreeNode>, String
     scan_directory(&root, true).map(|node| node.map_or_else(Vec::new, |node| node.children))
 }
 
+#[tauri::command]
+pub fn startup_markdown_path() -> Option<String> {
+    let args = std::env::args_os()
+        .skip(1)
+        .map(|argument| argument.to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    markdown_path_from_args(&args)
+}
+
+pub(crate) fn markdown_path_from_args(args: &[String]) -> Option<String> {
+    args.iter().find_map(|argument| {
+        let path = PathBuf::from(argument);
+        if !is_markdown_path(&path) {
+            return None;
+        }
+        let canonical_path = path.canonicalize().ok()?;
+        canonical_path
+            .is_file()
+            .then(|| canonical_path.to_string_lossy().into_owned())
+    })
+}
+
 fn scan_directory(path: &Path, report_error: bool) -> Result<Option<FileTreeNode>, String> {
     let entries = match fs::read_dir(path) {
         Ok(entries) => entries,
@@ -252,6 +274,41 @@ mod tests {
         );
         assert!(result.is_err());
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn startup_arguments_select_existing_markdown_with_unicode_and_spaces() {
+        let temporary = tempfile::tempdir().expect("temporary directory");
+        let markdown_path = temporary.path().join("中文 note.md");
+        fs::write(&markdown_path, "# 文件").expect("markdown file");
+        let args = vec![
+            "lightmark.exe".to_owned(),
+            "--ignored".to_owned(),
+            markdown_path.to_string_lossy().into_owned(),
+        ];
+
+        let selected = markdown_path_from_args(&args).expect("markdown argument");
+        assert_eq!(
+            PathBuf::from(selected),
+            markdown_path.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn startup_arguments_ignore_missing_and_non_markdown_paths() {
+        let temporary = tempfile::tempdir().expect("temporary directory");
+        let text_path = temporary.path().join("notes.txt");
+        fs::write(&text_path, "text").expect("text file");
+        let args = vec![
+            text_path.to_string_lossy().into_owned(),
+            temporary
+                .path()
+                .join("missing.md")
+                .to_string_lossy()
+                .into_owned(),
+        ];
+
+        assert_eq!(markdown_path_from_args(&args), None);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 [package]
 name = "lightmark"
-version = "0.1.0"
+version = "0.1.1"
 description = "A lightweight Markdown editor for Windows"
 authors = ["MHL"]
 edition = "2024"
@@ -16,6 +16,9 @@ tauri-build = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
 
 [dev-dependencies]
 tempfile = "3"
