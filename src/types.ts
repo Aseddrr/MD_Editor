@@ -31,6 +31,7 @@ export interface RecentFile {
 export interface Preferences {
   theme: Theme;
   viewMode: ViewMode;
+  sidebarOutlineRatio: number;
 }
 
 export interface AppState {
@@ -40,6 +41,7 @@ export interface AppState {
   outline: OutlineItem[];
   theme: Theme;
   viewMode: ViewMode;
+  sidebarOutlineRatio: number;
   recentFiles: RecentFile[];
 }
 

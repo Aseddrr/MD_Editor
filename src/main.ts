@@ -12,6 +12,7 @@ import {
 } from "./editor";
 import { parseOutline, renderMarkdown } from "./markdown";
 import { createEmptyDocument, createInitialState, documentDisplayName, isDocumentDirty } from "./state";
+import { calculateSidebarSplit, DEFAULT_SIDEBAR_OUTLINE_RATIO } from "./sidebar";
 import {
   loadPreferences,
   loadRecentFiles,
@@ -31,7 +32,8 @@ const preview = element<HTMLElement>("preview");
 const welcome = element<HTMLElement>("welcome");
 const fileTree = element<HTMLElement>("file-tree");
 const fileFilter = element<HTMLInputElement>("file-filter");
-const folderName = element<HTMLElement>("folder-name");
+const sidebar = element<HTMLElement>("sidebar");
+const sidebarResizer = element<HTMLElement>("sidebar-resizer");
 const outlineContainer = element<HTMLElement>("outline");
 const outlineCount = element<HTMLElement>("outline-count");
 const recentFilesContainer = element<HTMLElement>("recent-files");
@@ -44,6 +46,7 @@ const cursorStatus = element<HTMLElement>("cursor-status");
 const toast = element<HTMLElement>("toast");
 const viewModeButton = element<HTMLButtonElement>("view-mode-button");
 const themeButton = element<HTMLButtonElement>("theme-button");
+const sidebarResizeObserver = new ResizeObserver(applySidebarLayout);
 
 const state = createInitialState(loadPreferences(), loadRecentFiles());
 let hasDocumentSession = false;
@@ -55,6 +58,7 @@ let toastTimer: number | null = null;
 let searchMatches: SearchMatch[] = [];
 let searchIndex = -1;
 let lastNativeWindowTitle = "";
+let sidebarDragOffset = 0;
 
 void initialize().catch((error: unknown) => {
   showToast(errorMessage(error), "error", 5000);
@@ -63,6 +67,7 @@ void initialize().catch((error: unknown) => {
 async function initialize(): Promise<void> {
   applyTheme(state.theme);
   applyViewMode(state.viewMode);
+  applySidebarLayout();
   editor.value = state.document.content;
   renderTree();
   renderOutline();
@@ -98,6 +103,8 @@ function bindActions(): void {
   editor.addEventListener("select", updateCursorStatus);
   fileFilter.addEventListener("input", renderTree);
   element("refresh-tree-button").addEventListener("click", () => void refreshTree());
+  bindSidebarResizer();
+  sidebarResizeObserver.observe(sidebar);
   viewModeButton.addEventListener("click", cycleViewMode);
   themeButton.addEventListener("click", toggleTheme);
 
@@ -122,6 +129,79 @@ function bindActions(): void {
   });
 
   window.addEventListener("keydown", handleGlobalShortcut);
+  window.addEventListener("resize", applySidebarLayout);
+}
+
+function bindSidebarResizer(): void {
+  sidebarResizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    sidebarDragOffset = event.clientY - sidebarResizer.getBoundingClientRect().top;
+    sidebarResizer.setPointerCapture(event.pointerId);
+    sidebar.classList.add("is-resizing");
+    event.preventDefault();
+  });
+
+  sidebarResizer.addEventListener("pointermove", (event) => {
+    if (!sidebarResizer.hasPointerCapture(event.pointerId)) return;
+    const availablePixels = sidebar.clientHeight - sidebarResizer.offsetHeight;
+    if (availablePixels <= 0) return;
+    const requestedPixels = event.clientY - sidebar.getBoundingClientRect().top - sidebarDragOffset;
+    setSidebarRatio(requestedPixels / availablePixels, false);
+  });
+
+  sidebarResizer.addEventListener("pointerup", (event) => {
+    if (sidebarResizer.hasPointerCapture(event.pointerId)) {
+      sidebarResizer.releasePointerCapture(event.pointerId);
+    }
+    sidebar.classList.remove("is-resizing");
+    persistPreferences();
+  });
+
+  sidebarResizer.addEventListener("pointercancel", () => {
+    sidebar.classList.remove("is-resizing");
+    persistPreferences();
+  });
+  sidebarResizer.addEventListener("lostpointercapture", () => {
+    sidebar.classList.remove("is-resizing");
+  });
+
+  sidebarResizer.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    const split = calculateSidebarSplit(
+      sidebar.clientHeight,
+      sidebarResizer.offsetHeight,
+      state.sidebarOutlineRatio,
+    );
+    if (split.availablePixels <= 0) return;
+    const direction = event.key === "ArrowUp" ? -1 : 1;
+    setSidebarRatio(state.sidebarOutlineRatio + (direction * 24) / split.availablePixels, true);
+    event.preventDefault();
+  });
+
+  sidebarResizer.addEventListener("dblclick", () => {
+    setSidebarRatio(DEFAULT_SIDEBAR_OUTLINE_RATIO, true);
+  });
+}
+
+function applySidebarLayout(): void {
+  const split = calculateSidebarSplit(
+    sidebar.clientHeight,
+    sidebarResizer.offsetHeight,
+    state.sidebarOutlineRatio,
+  );
+  sidebar.style.setProperty("--outline-size", `${split.outlinePixels}px`);
+  sidebarResizer.setAttribute("aria-valuenow", String(Math.round(split.effectiveRatio * 100)));
+}
+
+function setSidebarRatio(requestedRatio: number, saveImmediately: boolean): void {
+  const split = calculateSidebarSplit(
+    sidebar.clientHeight,
+    sidebarResizer.offsetHeight,
+    requestedRatio,
+  );
+  state.sidebarOutlineRatio = split.effectiveRatio;
+  applySidebarLayout();
+  if (saveImmediately) persistPreferences();
 }
 
 async function bindWindowEvents(): Promise<void> {
@@ -238,7 +318,7 @@ async function refreshTree(): Promise<void> {
     return;
   }
   const currentScan = ++scanSession;
-  folderName.textContent = "正在扫描…";
+  fileTree.setAttribute("aria-busy", "true");
   try {
     const tree = await invoke<typeof state.tree>("scan_markdown_tree", {
       rootPath: state.rootPath,
@@ -251,6 +331,10 @@ async function refreshTree(): Promise<void> {
     state.tree = [];
     renderTree();
     showToast(errorMessage(error), "error", 5000);
+  } finally {
+    if (currentScan === scanSession) {
+      fileTree.removeAttribute("aria-busy");
+    }
   }
 }
 
@@ -422,7 +506,6 @@ function jumpToOutline(item: OutlineItem): void {
 }
 
 function renderTree(): void {
-  folderName.textContent = state.rootPath ? documentDisplayName(state.rootPath) : "未打开文件夹";
   if (!state.rootPath) {
     fileTree.replaceChildren();
     const empty = document.createElement("p");
@@ -583,7 +666,11 @@ function applyTheme(theme: Theme): void {
 }
 
 function persistPreferences(): void {
-  savePreferences({ theme: state.theme, viewMode: state.viewMode });
+  savePreferences({
+    theme: state.theme,
+    viewMode: state.viewMode,
+    sidebarOutlineRatio: state.sidebarOutlineRatio,
+  });
 }
 
 function setSaveStatus(status: typeof state.document.saveStatus): void {

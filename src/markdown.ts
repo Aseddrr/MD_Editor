@@ -94,6 +94,14 @@ export function renderMarkdown(markdown: string, outline: OutlineItem[]): string
     anchor.removeAttribute("href");
     anchor.classList.add("preview-link");
   });
+
+  container.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
+    if (table.parentElement?.classList.contains("table-scroll")) return;
+    const wrapper = document.createElement("div");
+    wrapper.className = "table-scroll";
+    table.replaceWith(wrapper);
+    wrapper.append(table);
+  });
   return container.innerHTML;
 }
 

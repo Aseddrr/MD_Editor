@@ -20,6 +20,7 @@ export function createInitialState(
     outline: [],
     theme: preferences.theme,
     viewMode: preferences.viewMode,
+    sidebarOutlineRatio: preferences.sidebarOutlineRatio,
     recentFiles,
   };
 }

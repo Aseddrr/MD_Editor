@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "LightMark",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "com.mhl.lightmark",
   "build": {
     "beforeDevCommand": "npm run dev",

@@ -1,4 +1,5 @@
 import type { Preferences, RecentFile, Theme, ViewMode } from "./types";
+import { DEFAULT_SIDEBAR_OUTLINE_RATIO, sanitizeSidebarOutlineRatio } from "./sidebar";
 
 const PREFERENCES_KEY = "lightmark.preferences.v1";
 const RECENT_FILES_KEY = "lightmark.recent-files.v1";
@@ -11,6 +12,7 @@ const defaultTheme: Theme = window.matchMedia("(prefers-color-scheme: dark)").ma
 const defaultPreferences: Preferences = {
   theme: defaultTheme,
   viewMode: "split",
+  sidebarOutlineRatio: DEFAULT_SIDEBAR_OUTLINE_RATIO,
 };
 
 export function loadPreferences(): Preferences {
@@ -23,6 +25,7 @@ export function loadPreferences(): Preferences {
     return {
       theme: isTheme(parsed.theme) ? parsed.theme : defaultPreferences.theme,
       viewMode: isViewMode(parsed.viewMode) ? parsed.viewMode : "split",
+      sidebarOutlineRatio: sanitizeSidebarOutlineRatio(parsed.sidebarOutlineRatio),
     };
   } catch {
     return { ...defaultPreferences };

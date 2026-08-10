@@ -28,13 +28,32 @@
       </header>
 
       <div class="app-body">
-        <aside class="sidebar">
+        <aside id="sidebar" class="sidebar">
+          <section class="sidebar-section outline-section">
+            <div class="section-heading">
+              <span class="section-title">大纲</span>
+              <span id="outline-count" class="section-count">0</span>
+            </div>
+            <nav id="outline" class="outline" aria-label="文档大纲"></nav>
+          </section>
+
+          <div
+            id="sidebar-resizer"
+            class="sidebar-resizer"
+            role="separator"
+            aria-label="调整大纲和目录高度"
+            aria-orientation="horizontal"
+            aria-controls="outline file-tree"
+            aria-valuemin="20"
+            aria-valuemax="80"
+            aria-valuenow="60"
+            tabindex="0"
+            title="拖动调整高度；双击恢复默认"
+          ></div>
+
           <section class="sidebar-section file-section">
             <div class="section-heading">
-              <div>
-                <span class="section-title">文件</span>
-                <span id="folder-name" class="section-subtitle">未打开文件夹</span>
-              </div>
+              <span class="section-title">目录</span>
               <button id="refresh-tree-button" class="icon-button" type="button" title="刷新文件树">↻</button>
             </div>
             <label class="filter-field">
@@ -42,14 +61,6 @@
               <input id="file-filter" type="search" placeholder="筛选文件名…" autocomplete="off" />
             </label>
             <div id="file-tree" class="file-tree" aria-label="Markdown 文件树"></div>
-          </section>
-
-          <section class="sidebar-section outline-section">
-            <div class="section-heading">
-              <span class="section-title">大纲</span>
-              <span id="outline-count" class="section-count">0</span>
-            </div>
-            <nav id="outline" class="outline" aria-label="文档大纲"></nav>
           </section>
         </aside>
 
