@@ -1,8 +1,26 @@
+# Dependencies
 node_modules/
+
+# Frontend build
 dist/
+
+# Tauri / Rust
 src-tauri/target/
 src-tauri/gen/schemas/
+
+# IDE
 .idea/
 .vscode/
+
+# Logs / temp
 *.log
 *.tmp
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
